@@ -1,107 +1,115 @@
 package com.pengurur.jarakradius.ui.navigation
 
-import androidx.compose.foundation.layout.calculateBottomPadding
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.Bookmark
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.google.maps.android.compose.CameraPositionState
-import com.pengurur.jarakradius.ui.favorite.FavoriteScreen
-import com.pengurur.jarakradius.ui.favorite.FavoriteViewModel
 import com.pengurur.jarakradius.ui.marker.MarkerScreen
-import com.pengurur.jarakradius.ui.marker.MarkerViewModel
-import com.pengurur.jarakradius.ui.simpan.SimpanScreen
-import com.pengurur.jarakradius.ui.simpan.SimpanViewModel
+
+private const val ROUTE_MARKER = "marker"
+private const val ROUTE_INFO = "info"
 
 private data class BottomNavItem(
     val route: String,
     val label: String,
-    val icon: ImageVector,
-    val iconActive: ImageVector
+    val icon: ImageVector
 )
 
 private val bottomNavItems = listOf(
-    BottomNavItem("marker", "MARKER", Icons.Outlined.LocationOn, Icons.Filled.LocationOn),
-    BottomNavItem("simpan", "SIMPAN", Icons.Outlined.Bookmark, Icons.Filled.Bookmark),
-    BottomNavItem("favorite", "FAVORITE", Icons.Outlined.Star, Icons.Filled.Star)
+    BottomNavItem(ROUTE_MARKER, "Marker", Icons.Default.LocationOn),
+    BottomNavItem(ROUTE_INFO, "Info", Icons.Default.Info)
 )
 
 @Composable
-fun MainScreen(
-    markerViewModel: MarkerViewModel,
-    simpanViewModel: SimpanViewModel,
-    favoriteViewModel: FavoriteViewModel,
-    cameraPositionState: CameraPositionState
-) {
-    val navController = rememberNavController()
-    val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = backStackEntry?.destination?.route
+fun MainScreen(navController: NavHostController = rememberNavController()) {
 
     Scaffold(
         bottomBar = {
             NavigationBar {
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = navBackStackEntry?.destination?.route
+
                 bottomNavItems.forEach { item ->
-                    val selected = currentRoute == item.route
                     NavigationBarItem(
-                        selected = selected,
+                        selected = currentRoute == item.route,
                         onClick = {
-                            if (!selected) {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
+                            navController.navigate(item.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
                                 }
+                                launchSingleTop = true
+                                restoreState = true
                             }
                         },
                         icon = {
-                            Icon(
-                                imageVector = if (selected) item.iconActive else item.icon,
-                                contentDescription = item.label
-                            )
+                            Icon(imageVector = item.icon, contentDescription = item.label)
                         },
-                        label = { Text(item.label, fontWeight = FontWeight.SemiBold) }
+                        label = { Text(item.label) }
                     )
                 }
             }
         }
-    ) { padding ->
+    ) { innerPadding ->
+        // CATATAN: innerPadding.calculateBottomPadding() adalah member function
+        // dari PaddingValues — TIDAK BISA dan TIDAK PERLU di-import.
         NavHost(
             navController = navController,
-            startDestination = "marker",
+            startDestination = ROUTE_MARKER,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = padding.calculateBottomPadding())
+                .padding(innerPadding)
         ) {
-            composable("marker") {
-                MarkerScreen(
-                    viewModel = markerViewModel,
-                    cameraPositionState = cameraPositionState
-                )
-            }
-            composable("simpan") { SimpanScreen(viewModel = simpanViewModel) }
-            composable("favorite") { FavoriteScreen(viewModel = favoriteViewModel) }
+            composable(ROUTE_MARKER) { MarkerScreen() }
+            composable(ROUTE_INFO) { InfoScreen() }
         }
+    }
+}
+
+@Composable
+private fun InfoScreen() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("RADIUS", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Aplikasi pengukur jarak dan radius berbasis Google Maps.",
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Ketuk peta untuk menambahkan titik. Titik pertama menjadi pusat radius, " +
+                   "titik berikutnya menjadi titik ukur.",
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }
