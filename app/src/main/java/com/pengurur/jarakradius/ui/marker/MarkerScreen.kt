@@ -25,31 +25,42 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.google.android.gms.maps.GoogleMap as GmsMap
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.Circle
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapType
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
+// ⚠️ SESUAIKAN 3 baris di bawah ini jika ViewModel Anda ada di package lain.
+// Cara cek: buka file MarkerViewModel.kt / SimpanViewModel.kt / FavoriteViewModel.kt,
+// lihat baris "package ..." paling atas, lalu samakan di sini.
+import com.pengurur.jarakradius.viewmodel.FavoriteViewModel
+import com.pengurur.jarakradius.viewmodel.MarkerViewModel
+import com.pengurur.jarakradius.viewmodel.SimpanViewModel
 
-// Posisi awal kamera: Monas, Jakarta. Ganti sesuai kebutuhan.
 private val DEFAULT_POSITION = LatLng(-6.175392, 106.827153)
-private const val MAP_ZOOM = 14f
+private const val DEFAULT_ZOOM = 14f
 
 @Composable
-fun MarkerScreen(modifier: Modifier = Modifier) {
+fun MarkerScreen(
+    markerViewModel: MarkerViewModel = viewModel(),
+    simpanViewModel: SimpanViewModel = viewModel(),
+    favoriteViewModel: FavoriteViewModel = viewModel(),
+    cameraPositionState: CameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(DEFAULT_POSITION, DEFAULT_ZOOM)
+    },
+    modifier: Modifier = Modifier
+) {
     val markerPoints = remember { mutableStateListOf<LatLng>() }
     var isSatellite by remember { mutableStateOf(false) }
-
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(DEFAULT_POSITION, MAP_ZOOM)
-    }
 
     Box(modifier = modifier.fillMaxSize()) {
 
@@ -57,15 +68,13 @@ fun MarkerScreen(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             properties = MapProperties(
-                // PENTING: mapType bertipe Int, konstanta dari kelas GoogleMap SDK.
-                // Tidak ada enum "MapType" di maps-compose.
-                mapType = if (isSatellite) GmsMap.MAP_TYPE_HYBRID
-                          else GmsMap.MAP_TYPE_NORMAL
+                // mapType di versi maps-compose Anda bertipe enum MapType,
+                // bukan Int — maka dipakai MapType.HYBRID / MapType.NORMAL
+                mapType = if (isSatellite) MapType.HYBRID else MapType.NORMAL
             ),
             uiSettings = MapUiSettings(zoomControlsEnabled = false),
             onMapClick = { latLng -> markerPoints.add(latLng) }
         ) {
-            // Garis penghubung antar titik
             if (markerPoints.size > 1) {
                 Polyline(
                     points = markerPoints.toList(),
@@ -74,7 +83,6 @@ fun MarkerScreen(modifier: Modifier = Modifier) {
                 )
             }
 
-            // Lingkaran radius: titik pertama = pusat, radius = jarak ke titik terakhir
             if (markerPoints.size >= 2) {
                 val radiusMeters = distanceBetween(markerPoints.first(), markerPoints.last())
                 Circle(
@@ -98,7 +106,6 @@ fun MarkerScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        // ── Kartu informasi ──
         Card(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -141,7 +148,6 @@ fun MarkerScreen(modifier: Modifier = Modifier) {
             }
         }
 
-        // ── Kontrol bawah ──
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -176,8 +182,6 @@ fun MarkerScreen(modifier: Modifier = Modifier) {
         }
     }
 }
-
-// ── Helper ──
 
 private fun distanceBetween(a: LatLng, b: LatLng): Float {
     val results = FloatArray(1)
